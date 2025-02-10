@@ -89,7 +89,7 @@ Edit `pom.xml` and replace its contents with the following:
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version>  <!-- Change to latest version if needed -->
+        <version>3.2.2</version>
         <relativePath/> 
     </parent>
 
@@ -99,6 +99,45 @@ Edit `pom.xml` and replace its contents with the following:
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- Spring Boot Starter Test (JUnit 5, AssertJ, MockMvc) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- AssertJ for better assertions -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Boot Test WebClient for integration tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -106,6 +145,16 @@ Edit `pom.xml` and replace its contents with the following:
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -117,12 +166,14 @@ Edit `pom.xml` and replace its contents with the following:
 
 ## **3. Create the Main Application File**
 
-### **Modify `src/main/java/com/example/App.java`**
+### **Modify or Create `src/main/java/com/example/App.java`**
 Edit the file and replace its contents with:
 
 ```java
 package com.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -139,8 +190,11 @@ public class App {
 @RestController
 @RequestMapping("/")
 class HelloController {
+    private static final Logger logger = LoggerFactory.getLogger(HelloController.class);
+
     @GetMapping
     public String hello() {
+        logger.info("Received request for / endpoint");
         return "Hello, World from Spring Boot!";
     }
 }
@@ -148,9 +202,63 @@ class HelloController {
 
 ---
 
-## **4. Build and Run the Application**
+## **4. Create the Sample Test Case**
 
-### **Build the Application**
+### **Modify or Create `src/test/java/com/example/AppTest.java`**
+Edit the file and replace its contents with:
+
+```java
+package com.example;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class AppTest {
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Test
+    void contextLoads() {
+        assertThat(restTemplate).isNotNull();
+    }
+
+    @Test
+    void helloEndpointShouldReturnHelloWorld() {
+        String response = this.restTemplate.getForObject("http://localhost:" + port + "/", String.class);
+        assertThat(response).isEqualTo("Hello, World from Spring Boot!");
+    }
+}
+```
+---
+
+## **5. Build and Run the Application**
+
+### **Rebuild and run tests**
+```
+mvn test
+```
+
+### **To package the app while running tests**
+```
+mvn clean package
+```
+
+### **Maven clean to remove old compiled files**
+```
+mvn clean
+```
+
+### **Build the Package while skipping tests**
 ```sh
 mvn clean package -Dmaven.test.skip=true
 ```
@@ -159,6 +267,12 @@ mvn clean package -Dmaven.test.skip=true
 ```sh
 java -jar target/hello-world-1.0-SNAPSHOT.jar
 ```
+
+### **Runs the app directly from source without needing a JAR**
+```
+mvn spring-boot:run
+```
+
 
 ### **Access the Application**
 Open a browser and go to:
@@ -173,22 +287,6 @@ Hello, World from Spring Boot!
 ---
 
 ## **Troubleshooting**
-
-### **Issue: JUnit Errors During Build**
-If you encounter errors related to JUnit while building, either **skip tests** (`-Dmaven.test.skip=true`) or add the following dependencies to `pom.xml`:
-
-```xml
-<dependency>
-    <groupId>org.junit.jupiter</groupId>
-    <artifactId>junit-jupiter-api</artifactId>
-    <scope>test</scope>
-</dependency>
-<dependency>
-    <groupId>org.junit.jupiter</groupId>
-    <artifactId>junit-jupiter-engine</artifactId>
-    <scope>test</scope>
-</dependency>
-```
 
 ### **Issue: Port 8080 Already in Use**
 Run the following command to find and kill the process using port 8080:
