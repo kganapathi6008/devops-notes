@@ -1,0 +1,2 @@
+- [How to Connect Frontend and Backend Applications](https://www.getwidget.dev/blog/connect-frontend-to-backend/)
+-
