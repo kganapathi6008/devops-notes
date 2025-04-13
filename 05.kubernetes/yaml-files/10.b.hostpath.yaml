@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-hostpath
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-hostpath
+  template:
+    metadata:
+      labels:
+        app: mongo-hostpath
+    spec:
+      containers:
+      - name: mongo
+        image: mongo
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: admin
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: secret123
+        volumeMounts:
+        - name: mongo-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-storage
+        hostPath:
+          path: /tmp/mongo-data
+          type: DirectoryOrCreate

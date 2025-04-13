@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod
+  # namespace: app-namespace        ## app-namespace
+  labels:
+    app: app-server
+spec:
+  containers:
+  - name: app-container
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  # namespace: app-namespace        ## app-namespace
+spec:
+  selector:
+    app: app-server  # Targets app-pod
+  ports:
+  - protocol: TCP
+    port: 80         # Service port
+    targetPort: 80   # Pod's exposed port

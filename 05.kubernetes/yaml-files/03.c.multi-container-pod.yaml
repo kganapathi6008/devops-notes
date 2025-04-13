@@ -1,0 +1,28 @@
+# https://kubernetes.io/docs/tasks/access-application-cluster/communicate-containers-same-pod-shared-volume/
+apiVersion: v1
+kind: Pod
+metadata:
+  name: two-containers
+spec:
+
+  restartPolicy: Never
+
+  volumes:
+  - name: shared-data                   ## Both containers are used the same volume
+    emptyDir: {}                        ## It is a Kubernetes volume type that creates an empty directory when a Pod starts. which is a local volume.
+
+  containers:
+
+  - name: nginx-container
+    image: nginx:latest
+    volumeMounts:
+    - name: shared-data
+      mountPath: /usr/share/nginx/html
+
+  - name: debian-container
+    image: debian
+    volumeMounts:
+    - name: shared-data
+      mountPath: /pod-data
+    command: ["/bin/sh"]
+    args: ["-c", "echo Hello from the debian container > /pod-data/index.html && sleep 36000"]        ## I have added sleep 36000, so the container will not exit
