@@ -1,0 +1,106 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: newstorageclass
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-dynamic-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: newstorageclass
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-dynamic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-dynamic
+  template:
+    metadata:
+      labels:
+        app: mongo-dynamic
+    spec:
+      containers:
+      - name: mongo
+        image: mongo
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: admin
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: secret123
+        volumeMounts:
+        - name: mongo-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-storage
+        persistentVolumeClaim:
+          claimName: mongo-dynamic-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  selector:
+    app: mongo-dynamic
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
+---
+# USER-MANAGEMENT SPRING BOOT DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-management
+  template:
+    metadata:
+      labels:
+        app: user-management
+    spec:
+      containers:
+        - name: user-management
+          image: ganadevops/user-management:latest       # Replace with your image repo if using ECR/DockerHub
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MONGO_DB_HOSTNAME
+              value: "mongo"
+            - name: MONGO_DB_USERNAME
+              value: "admin"
+            - name: MONGO_DB_PASSWORD
+              value: "secret123"
+---
+# USER-MANAGEMENT SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-management-service
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  selector:
+    app: user-management
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer              # Or use NodePort if not in cloud

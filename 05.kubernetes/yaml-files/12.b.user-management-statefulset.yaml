@@ -1,0 +1,113 @@
+# STORAGE CLASS (if needed)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: newstorageclass
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+---
+# HEADLESS SERVICE FOR MONGO STATEFULSET
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  ports:
+    - port: 27017
+  clusterIP: None
+  selector:
+    app: mongo
+---
+# MONGODB STATEFULSET
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  serviceName: "mongo"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo
+          command:
+            - mongod
+            - "--replSet"
+            - rs0
+            - "--bind_ip_all"
+            - "--auth"
+            - "--keyFile"
+            - "/data/keyfile"  # Changed path to be in /data
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /data/db
+            - name: mongodb-keyfile
+              mountPath: /data/keyfile  # Changed mount path
+              subPath: keyfile  # Mount just the keyfile
+              readOnly: true
+      volumes:
+        - name: mongodb-keyfile
+          secret:
+            secretName: mongodb-keyfile
+            defaultMode: 0400
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "newstorageclass"
+        resources:
+          requests:
+            storage: 1Gi
+---
+# USER-MANAGEMENT SPRING BOOT DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-management
+  template:
+    metadata:
+      labels:
+        app: user-management
+    spec:
+      containers:
+        - name: user-management
+          image: ganadevops/user-management:2       # Replace with your image repo if using ECR/DockerHub
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATA_MONGODB_URI
+              value: "mongodb://admin:secret123@mongo-0.mongo:27017,mongo-1.mongo:27017/users?replicaSet=rs0&authSource=admin"
+---
+# USER-MANAGEMENT SERVICE
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-management-service
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  selector:
+    app: user-management
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer # Or use NodePort if not in cloud

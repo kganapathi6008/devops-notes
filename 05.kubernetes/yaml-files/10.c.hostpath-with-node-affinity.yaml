@@ -37,3 +37,4 @@ spec:
         hostPath:
           path: /tmp/mongo-data
           type: DirectoryOrCreate
+---
