@@ -5,6 +5,7 @@ metadata:
 provisioner: kubernetes.io/aws-ebs
 parameters:
   type: gp2
+  fsType: ext4
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 ---
@@ -19,7 +20,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-
 ---
 apiVersion: apps/v1
 kind: Deployment

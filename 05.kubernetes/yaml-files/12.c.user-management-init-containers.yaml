@@ -1,3 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-config
+data:
+  MONGO_DB_HOSTNAME: mongo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongo-secret
+  namespace: default
+type: Opaque
+data:
+  username: YWRtaW4=            # base64 encoded 'admin'
+  password: c2VjcmV0MTIz        # base64 encoded 'secret123'
+---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -39,9 +56,15 @@ spec:
         image: mongo
         env:
         - name: MONGO_INITDB_ROOT_USERNAME
-          value: admin
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: username
         - name: MONGO_INITDB_ROOT_PASSWORD
-          value: secret123
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: password
         volumeMounts:
         - name: mongo-storage
           mountPath: /data/db
@@ -77,6 +100,10 @@ spec:
       labels:
         app: user-management
     spec:
+      initContainers:
+        - name: wait-for-mongo
+          image: busybox
+          command: ['sh', '-c', 'until nc -z mongo 27017; do echo waiting for mongo; sleep 2; done']
       containers:
         - name: user-management
           image: ganadevops/user-management:latest       # Replace with your image repo if using ECR/DockerHub
@@ -84,11 +111,20 @@ spec:
             - containerPort: 8080
           env:
             - name: MONGO_DB_HOSTNAME
-              value: "mongo"
+              valueFrom:
+                configMapKeyRef:
+                  name: mongo-config
+                  key: MONGO_DB_HOSTNAME
             - name: MONGO_DB_USERNAME
-              value: "admin"
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: username
             - name: MONGO_DB_PASSWORD
-              value: "secret123"
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: password
 ---
 # USER-MANAGEMENT SERVICE
 apiVersion: v1
@@ -104,7 +140,6 @@ spec:
     port: 80
     targetPort: 8080
 ---
-# USER-MANAGEMENT INGRESS
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

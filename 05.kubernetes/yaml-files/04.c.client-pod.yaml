@@ -19,6 +19,7 @@ metadata:
   name: client-service
   # namespace: client-namespace        ## client-namespace
 spec:
+  type: ClusterIP
   selector:
     app: client-server  # Targets client-pod
   ports:

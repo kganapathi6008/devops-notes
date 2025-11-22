@@ -18,6 +18,7 @@ metadata:
   name: app-service
   # namespace: app-namespace        ## app-namespace
 spec:
+  type: ClusterIP
   selector:
     app: app-server  # Targets app-pod
   ports:
