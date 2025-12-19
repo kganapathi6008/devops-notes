@@ -31,9 +31,9 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'                                ## enable HTTP and HTTPS listeners, HTTPS will require certificate ARN
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:<region>:<account-id>:certificate/<cert-id>"    ## update certificate-arn
-    alb.ingress.kubernetes.io/security-groups: "sg-0123456789abcdef0"                                       ## udpate security-group
+    alb.ingress.kubernetes.io/security-groups: "sg-xxxxxxxxxxxxxxx"                                       ## udpate security-group
     alb.ingress.kubernetes.io/manage-backend-security-group-rules: "true"
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     # alb.ingress.kubernetes.io/healthcheck-path: /healthz                                                  ## Replace the custom health check if the application has
