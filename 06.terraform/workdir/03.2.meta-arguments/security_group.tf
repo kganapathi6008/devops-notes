@@ -1,5 +1,5 @@
-resource "aws_security_group" "dev_sg" {
-  name        = "${var.environment}-ec2-sg"
+resource "aws_security_group" "ec2_security_group" {
+  name        = "${var.org_name}-${var.environment}-ec2-sg"
   description = "Security group for ${var.environment} EC2 instances"
 
   dynamic "ingress" {

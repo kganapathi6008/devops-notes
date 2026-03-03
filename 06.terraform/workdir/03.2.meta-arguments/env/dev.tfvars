@@ -1,5 +1,6 @@
 aws_region  = "us-east-1"
 environment = "dev"
+org_name   = "myorg"
 
 security_group_rules = {
   internal_ssh = {

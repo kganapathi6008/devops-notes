@@ -6,6 +6,11 @@ variable "environment" {
   type = string
 }
 
+variable "org_name" {
+  type        = string
+  description = "Organization name used in resource naming"
+}
+
 variable "ec2_instances" {
   description = "Map of EC2 service definitions"
   type = map(object({
