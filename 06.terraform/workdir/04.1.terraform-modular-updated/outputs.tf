@@ -1,8 +1,28 @@
-output "security_group_ids" {
+output "key_pairs" {
+
+  description = "Generated key pairs"
 
   value = {
-    for k, v in module.security_groups :
-    k => v.security_group_id
+    for key, mod in module.key_pairs :
+    key => {
+      key_name = mod.key_name
+      key_file = mod.key_file
+    }
   }
 
 }
+
+output "security_groups" {
+  value = {
+    for k, sg in module.security_groups :
+    k => {
+      id   = sg.security_group_id
+      name = sg.security_group_name
+    }
+  }
+}
+
+output "ec2_instances" {
+  value = module.ec2.instances
+}
+

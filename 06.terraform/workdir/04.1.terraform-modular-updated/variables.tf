@@ -11,14 +11,24 @@ variable "org_name" {
   description = "Organization name used in resource naming"
 }
 
+variable "key_pairs" {
+  description = "Key pairs to generate"
+  type = map(object({}))
+}
+
 variable "ec2_instances" {
+
+  description = "EC2 service definitions"
+
   type = map(object({
     ami_id            = string
     instance_type     = string
     instance_count    = number
     enable_monitoring = bool
     security_groups   = list(string)
+    key_pair          = string
   }))
+
 }
 
 variable "security_groups" {

@@ -3,6 +3,15 @@ environment = "dev"
 aws_region  = "us-east-1"
 
 ############################################################
+# key pairs
+############################################################
+
+key_pairs = {
+  service-a = {}
+  service-b = {}
+}
+
+############################################################
 # SECURITY GROUPS
 ############################################################
 
@@ -136,11 +145,8 @@ ec2_instances = {
     instance_count    = 1
     enable_monitoring = false
 
-    security_groups = [
-      "global",
-      "service-a",
-      "vault"
-    ]
+    security_groups = [ "global", "service-a", "vault" ]
+    key_pair        = "service-a"
   }
 
   service-b = {
@@ -149,11 +155,8 @@ ec2_instances = {
     instance_count    = 2
     enable_monitoring = false
 
-    security_groups = [
-      "global",
-      "service-b",
-      "vault"
-    ]
+    security_groups = [ "global", "service-b", "vault" ]
+    key_pair        = "service-b"
   }
 
 }

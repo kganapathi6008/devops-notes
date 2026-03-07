@@ -14,10 +14,19 @@ variable "ec2_instances" {
     instance_count    = number
     enable_monitoring = bool
     security_groups   = list(string)
+    key_pair          = string
   }))
 
 }
 
 variable "security_groups" {
+  type = map(string)
+}
+
+variable "key_pairs" {
+  type = map(string)
+}
+
+variable "tags" {
   type = map(string)
 }
