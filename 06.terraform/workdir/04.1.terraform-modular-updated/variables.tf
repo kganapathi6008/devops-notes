@@ -12,12 +12,12 @@ variable "org_name" {
 }
 
 variable "ec2_instances" {
-  description = "Map of EC2 service definitions"
   type = map(object({
     ami_id            = string
     instance_type     = string
     instance_count    = number
     enable_monitoring = bool
+    security_groups   = list(string)
   }))
 }
 

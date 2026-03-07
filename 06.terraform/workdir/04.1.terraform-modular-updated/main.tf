@@ -21,5 +21,9 @@ module "ec2" {
   environment   = var.environment
   ec2_instances = var.ec2_instances
 
-  security_group_id = module.security_groups["ec2"].security_group_id
+  security_groups = {
+    for key, mod in module.security_groups :
+    key => mod.security_group_id
+  }
+
 }

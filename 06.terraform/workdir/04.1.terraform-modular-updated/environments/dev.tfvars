@@ -1,10 +1,14 @@
-aws_region  = "us-east-1"
+org_name    = "myorg"
 environment = "dev"
-org_name   = "myorg"
+aws_region  = "us-east-1"
+
+############################################################
+# SECURITY GROUPS
+############################################################
 
 security_groups = {
 
-  ec2 = {
+  global = {
 
     ingress_rules = [
 
@@ -17,22 +21,6 @@ security_groups = {
           "49.37.154.204/32",
           "18.23.44.10/32"
         ]
-      },
-
-      {
-        from_port   = 80
-        to_port     = 80
-        protocol    = "tcp"
-        description = "HTTP"
-        cidr_blocks = ["0.0.0.0/0"]
-      },
-
-      {
-        from_port   = 8080
-        to_port     = 9000
-        protocol    = "tcp"
-        description = "Application ports"
-        cidr_blocks = ["0.0.0.0/0"]
       }
 
     ]
@@ -48,22 +36,19 @@ security_groups = {
       }
 
     ]
-
   }
 
-  rds = {
+
+  service-a = {
 
     ingress_rules = [
 
       {
-        from_port   = 5432
-        to_port     = 5432
+        from_port   = 8080
+        to_port     = 8080
         protocol    = "tcp"
-        description = "Postgres access"
-        cidr_blocks = [
-          "49.37.154.204/32",
-          "18.23.44.10/32"
-        ]
+        description = "Service-A application port"
+        cidr_blocks = ["0.0.0.0/0"]
       }
 
     ]
@@ -79,17 +64,83 @@ security_groups = {
       }
 
     ]
+  }
 
+
+  service-b = {
+
+    ingress_rules = [
+
+      {
+        from_port   = 8081
+        to_port     = 8081
+        protocol    = "tcp"
+        description = "Service-B application port"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+    ]
+
+    egress_rules = [
+
+      {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        description = "Allow all outbound"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+    ]
+  }
+
+
+  vault = {
+
+    ingress_rules = [
+
+      {
+        from_port   = 8200
+        to_port     = 8200
+        protocol    = "tcp"
+        description = "Vault access"
+        cidr_blocks = ["10.0.0.0/16"]
+      }
+
+    ]
+
+    egress_rules = [
+
+      {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        description = "Allow all outbound"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+    ]
   }
 
 }
 
+############################################################
+# EC2 INSTANCES
+############################################################
+
 ec2_instances = {
+
   service-a = {
     ami_id            = "ami-0f3caa1cf4417e51b"
     instance_type     = "t3.micro"
     instance_count    = 1
     enable_monitoring = false
+
+    security_groups = [
+      "global",
+      "service-a",
+      "vault"
+    ]
   }
 
   service-b = {
@@ -97,6 +148,12 @@ ec2_instances = {
     instance_type     = "t3.small"
     instance_count    = 2
     enable_monitoring = false
-  }
-}
 
+    security_groups = [
+      "global",
+      "service-b",
+      "vault"
+    ]
+  }
+
+}
