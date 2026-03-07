@@ -25,8 +25,3 @@ resource "aws_security_group" "ec2_security_group" {
     create_before_destroy = true
   }
 }
-
-moved {
-  from = aws_security_group.security_group
-  to   = aws_security_group.ec2_security_group
-}
