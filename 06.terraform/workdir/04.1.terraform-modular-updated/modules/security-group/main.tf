@@ -1,7 +1,7 @@
-resource "aws_security_group" "ec2_security_group" {
+resource "aws_security_group" "this" {
 
-  name        = "${var.org_name}-${var.environment}-ec2-sg"
-  description = "Security group for ${var.environment} EC2 instances"
+  name        = "${var.org_name}-${var.environment}-${var.sg_name}-sg"
+  description = "Security group for ${var.sg_name}"
 
   dynamic "ingress" {
 
@@ -17,6 +17,7 @@ resource "aws_security_group" "ec2_security_group" {
       description = ingress.value.description
       cidr_blocks = ingress.value.cidr_blocks
     }
+
   }
 
   dynamic "egress" {
@@ -33,6 +34,7 @@ resource "aws_security_group" "ec2_security_group" {
       description = egress.value.description
       cidr_blocks = egress.value.cidr_blocks
     }
+
   }
 
   lifecycle {

@@ -6,9 +6,11 @@ variable "environment" {
   type = string
 }
 
-variable "ingress_rules" {
-  description = "Security group ingress rules"
+variable "sg_name" {
+  type = string
+}
 
+variable "ingress_rules" {
   type = list(object({
     from_port   = number
     to_port     = number
@@ -19,8 +21,6 @@ variable "ingress_rules" {
 }
 
 variable "egress_rules" {
-  description = "Security group egress rules"
-
   type = list(object({
     from_port   = number
     to_port     = number

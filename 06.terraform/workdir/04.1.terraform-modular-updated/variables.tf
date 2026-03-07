@@ -21,22 +21,26 @@ variable "ec2_instances" {
   }))
 }
 
-variable "ingress_rules" {
-  type = list(object({
-    from_port   = number
-    to_port     = number
-    protocol    = string
-    description = string
-    cidr_blocks = list(string)
-  }))
-}
+variable "security_groups" {
 
-variable "egress_rules" {
-  type = list(object({
-    from_port   = number
-    to_port     = number
-    protocol    = string
-    description = string
-    cidr_blocks = list(string)
+  description = "Security groups configuration"
+
+  type = map(object({
+    ingress_rules = list(object({
+      from_port   = number
+      to_port     = number
+      protocol    = string
+      description = string
+      cidr_blocks = list(string)
+    }))
+
+    egress_rules = list(object({
+      from_port   = number
+      to_port     = number
+      protocol    = string
+      description = string
+      cidr_blocks = list(string)
+    }))
   }))
+
 }
