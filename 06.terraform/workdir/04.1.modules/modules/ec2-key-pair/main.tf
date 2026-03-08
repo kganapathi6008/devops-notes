@@ -23,9 +23,9 @@ resource "tls_private_key" "ssh_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
 }
 
@@ -36,9 +36,9 @@ resource "aws_key_pair" "generated" {
 
   tags = local.tags
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
 }
 
@@ -48,8 +48,8 @@ resource "local_file" "private_key" {
   filename        = local.key_file
   file_permission = "0400"
 
-  lifecycle {
-    ignore_changes = [content]
-  }
+  # lifecycle {
+  #   ignore_changes = [content]
+  # }
 
 }
