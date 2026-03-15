@@ -7,7 +7,6 @@ output "instances" {
       instance_type              = inst.instance_type
       instance_vpc               = inst.vpc_security_group_ids
       instance_tags              = inst.tags
-      key_pair                   = inst.key_name
     }
   }
 }

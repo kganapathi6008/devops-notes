@@ -13,8 +13,6 @@ locals {
         instance_type     = config.instance_type
         enable_monitoring = config.enable_monitoring
         security_groups   = config.security_groups
-        key_pair          = config.key_pair
-        subnet_type       = config.subnet_type
 
         instance_name = "${var.org_name}-${service_name}-${var.environment}-${i}"
 
@@ -43,11 +41,7 @@ resource "aws_instance" "example" {
   instance_type = each.value.instance_type
   monitoring    = each.value.enable_monitoring
 
-  key_name = var.key_pairs[each.value.key_pair]
-
-  subnet_id = each.value.subnet_type == "public" ? var.public_subnets[each.value.index % length(var.public_subnets)] : var.private_subnets[each.value.index % length(var.private_subnets)]
-
-  associate_public_ip_address = each.value.subnet_type == "public"
+  subnet_id = element(var.subnets_ids, each.value.index)
 
   iam_instance_profile = var.iam_instance_profile
 
@@ -60,5 +54,9 @@ resource "aws_instance" "example" {
     var.tags,
     each.value.resource_tags
   )
+
+  # lifecycle {
+  #   ignore_changes = [tags]
+  # }
 
 }

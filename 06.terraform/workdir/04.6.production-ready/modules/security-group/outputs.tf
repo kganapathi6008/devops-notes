@@ -1,7 +1,7 @@
-output "security_group_id" {
+output "id" {
   value = aws_security_group.this.id
 }
 
-output "security_group_name" {
+output "name" {
   value = aws_security_group.this.name
 }

@@ -10,41 +10,34 @@ vpc_cidr = "10.0.0.0/16"
 az_count = 3
 
 ############################################################
-# key pairs
-############################################################
-
-key_pairs = {
-  service-a = {}
-  jumpbox   = {}
-}
-
-############################################################
 # SECURITY GROUPS
 ############################################################
 
 security_groups = {
 
-  jumpbox = {
+  alb = {
 
     ingress_rules = [
+
       {
-        from_port   = 22
-        to_port     = 22
+        from_port   = 80
+        to_port     = 80
         protocol    = "tcp"
-        description = "SSH access"
+        description = "HTTP access from internet"
+        cidr_blocks = ["0.0.0.0/0"]
+      },
+
+      {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        description = "HTTPS access from internet"
         cidr_blocks = ["0.0.0.0/0"]
       }
+
     ]
 
-    egress_rules = [
-      {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        description = "Allow all outbound"
-        cidr_blocks = ["0.0.0.0/0"]
-      }
-    ]
+    egress_rules = []
   }
 
   service-a = {
@@ -56,68 +49,46 @@ security_groups = {
         to_port     = 8080
         protocol    = "tcp"
         description = "Service-A application port"
-        cidr_blocks = ["0.0.0.0/0"]
+        source_sg_names = ["alb"]
       }
 
     ]
 
-    egress_rules = [
-
-      {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        description = "Allow all outbound"
-        cidr_blocks = ["0.0.0.0/0"]
-      }
-
-    ]
+    egress_rules = []
   }
 
   rds = {
 
     ingress_rules = [
+
       {
         from_port   = 5432
         to_port     = 5432
         protocol    = "tcp"
-        description = "PostgreSQL access from VPC"
-        cidr_blocks = ["10.0.0.0/16"]
+        description = "Service-A access to PostgreSQL"
+        source_sg_names = ["service-a"]
       }
+
     ]
 
-    egress_rules = [
-      {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        description = "Allow all outbound"
-        cidr_blocks = ["0.0.0.0/0"]
-      }
-    ]
+    egress_rules = []
   }
 
   monitoring = {
 
     ingress_rules = [
+
       {
         from_port   = 9187
         to_port     = 9187
         protocol    = "tcp"
         description = "Postgres exporter monitoring"
-        cidr_blocks = ["10.0.0.0/16"]
+        cidr_blocks = ["vpc"]
       }
+
     ]
 
-    egress_rules = [
-      {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        description = "Allow all outbound"
-        cidr_blocks = ["0.0.0.0/0"]
-      }
-    ]
+    egress_rules = []
   }
 
 }
@@ -128,24 +99,13 @@ security_groups = {
 
 ec2_instances = {
 
-  jumpbox = {
-    ami_id            = "ami-0f3caa1cf4417e51b"
-    instance_type     = "t3.micro"
-    instance_count    = 1
-    enable_monitoring = false
-    security_groups   = ["jumpbox"]
-    key_pair          = "jumpbox"
-    subnet_type       = "public"
-  }
-
   service-a = {
     ami_id            = "ami-0f3caa1cf4417e51b"
     instance_type     = "t3.micro"
     instance_count    = 1
     enable_monitoring = false
-    security_groups   = ["service-a"]
-    key_pair          = "service-a"
-    subnet_type       = "private"
+
+    security_groups = [ "service-a" ]
   }
 
 }

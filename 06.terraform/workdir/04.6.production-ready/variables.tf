@@ -28,35 +28,36 @@ variable "vpc_cidr" {
   type        = string
 }
 
-## key pair variables
-variable "key_pairs" {
-  description = "Key pairs to generate"
-  type = map(object({}))
-}
-
 ## security group variables
 variable "security_groups" {
 
-  description = "Security groups configuration"
-
   type = map(object({
+
     ingress_rules = list(object({
+
       from_port   = number
       to_port     = number
       protocol    = string
       description = string
-      cidr_blocks = list(string)
+
+      cidr_blocks     = optional(list(string))
+      source_sg_names = optional(list(string))
+
     }))
 
     egress_rules = list(object({
+
       from_port   = number
       to_port     = number
       protocol    = string
       description = string
-      cidr_blocks = list(string)
-    }))
-  }))
 
+      cidr_blocks     = optional(list(string))
+      source_sg_names = optional(list(string))
+
+    }))
+
+  }))
 }
 
 ## EC2 variables
@@ -70,12 +71,9 @@ variable "ec2_instances" {
     instance_count    = number
     enable_monitoring = bool
     security_groups   = list(string)
-    key_pair          = string
-    subnet_type       = string   # public or private
   }))
 
 }
-
 
 ## RDS variables
 variable "rds_instances" {
