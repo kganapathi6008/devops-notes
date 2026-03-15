@@ -16,22 +16,20 @@ output "database_subnets" {
 
 
 output "security_groups" {
-
   value = {
-    for name, sg in module.security_groups :
-    name => {
-      id   = sg.id
-      name = sg.name
+    for key, sg in module.security_groups :
+    key => {
+      id   = sg.security_group_id
+      name = sg.security_group_name
     }
   }
-
 }
 
-# output "ec2_instances" {
-#   value = module.ec2.instances
-# }
+output "ec2_instances" {
+  value = module.ec2.instances
+}
 
 
-# output "rds_endpoints" {
-#   value = module.rds.rds_endpoints
-# }
+output "rds_info" {
+  value = module.rds.rds_info
+}

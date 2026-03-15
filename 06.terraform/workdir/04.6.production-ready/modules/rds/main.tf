@@ -14,7 +14,7 @@ resource "aws_db_instance" "this" {
   port    = each.value.port
 
   username = "postgres"
-  password = "postgres123456"
+  manage_master_user_password = true
 
   db_subnet_group_name = var.db_subnet_group_name
 
