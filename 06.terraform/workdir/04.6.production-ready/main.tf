@@ -66,16 +66,38 @@ resource "aws_security_group_rule" "allow_cidr_rules" {
 
   security_group_id = module.security_groups[each.value.sg_name].id
 
+  description = each.value.description
   from_port = each.value.from_port
   to_port   = each.value.to_port
   protocol  = each.value.protocol
+  cidr_blocks = [ for cidr in each.value.cidr_blocks : cidr == "vpc" ? var.vpc_cidr : cidr ]
+
+}
+
+############################################
+# EGRESS RULES - CIDR BASED
+############################################
+
+resource "aws_security_group_rule" "egress_cidr_rules" {
+
+  for_each = {
+    for index, rule in local.egress_rules :
+    index => rule if length(rule.cidr_blocks) > 0
+  }
+
+  type = "egress"
+
+  security_group_id = module.security_groups[each.value.sg_name].id
+
+  description = each.value.description
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port
+  protocol    = each.value.protocol
 
   cidr_blocks = [
     for cidr in each.value.cidr_blocks :
     cidr == "vpc" ? var.vpc_cidr : cidr
   ]
-
-  description = each.value.description
 }
 
 ############################################
@@ -93,13 +115,35 @@ resource "aws_security_group_rule" "allow_sg_rules" {
 
   security_group_id = module.security_groups[each.value.sg_name].id
 
-  source_security_group_id = module.security_groups[each.value.source_sg_list[0]].id
-
+  description = each.value.description
   from_port = each.value.from_port
   to_port   = each.value.to_port
   protocol  = each.value.protocol
+  source_security_group_id = module.security_groups[each.value.source_sg_list[0]].id
+
+}
+
+############################################
+# EGRESS RULES - SG TO SG
+############################################
+
+resource "aws_security_group_rule" "egress_sg_rules" {
+
+  for_each = {
+    for index, rule in local.egress_rules :
+    index => rule if length(rule.source_sg_list) > 0
+  }
+
+  type = "egress"
+
+  security_group_id = module.security_groups[each.value.sg_name].id
 
   description = each.value.description
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port
+  protocol    = each.value.protocol
+
+  source_security_group_id = module.security_groups[each.value.source_sg_list[0]].id
 }
 
 ############################################

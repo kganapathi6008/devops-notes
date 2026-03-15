@@ -43,7 +43,6 @@ security_groups = {
   service-a = {
 
     ingress_rules = [
-
       {
         from_port   = 8080
         to_port     = 8080
@@ -51,10 +50,27 @@ security_groups = {
         description = "Service-A application port"
         source_sg_names = ["alb"]
       }
-
     ]
 
-    egress_rules = []
+    egress_rules = [
+
+      {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        description = "Access PostgreSQL"
+        source_sg_names = ["rds"]
+      },
+
+      {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        description = "Internet access"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+    ]
   }
 
   rds = {

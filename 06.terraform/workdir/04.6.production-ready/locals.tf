@@ -29,6 +29,25 @@ locals {
 
 }
 
+locals {
+
+  egress_rules = flatten([
+    for sg_name, sg in var.security_groups : [
+      for rule in sg.egress_rules : {
+        sg_name     = sg_name
+        from_port   = rule.from_port
+        to_port     = rule.to_port
+        protocol    = rule.protocol
+        description = rule.description
+
+        cidr_blocks    = coalesce(rule.cidr_blocks, [])
+        source_sg_list = coalesce(rule.source_sg_names, [])
+      }
+    ]
+  ])
+
+}
+
 ## used in vpc module and subnets module
 locals {
 
