@@ -1,411 +1,513 @@
-# AWS Infrastructure Setup & Connection Guide
+# Production Ready Terraform Infrastructure Walkthrough
 
 ## Overview
 
-This document explains the Terraform infrastructure created and how to connect to the resources.
+This document summarizes the production‑style Terraform infrastructure that was provisioned.
 
-Infrastructure includes:
-
-* VPC
-* Public / Private / Database subnets
-* NAT Gateway
-* EC2 instance (service-a)
-* PostgreSQL RDS
-* Security Groups
-* IAM Role for EC2 with SSM access
+Environment: dev
+Region: us-east-1
+Organization: myorg
 
 ---
 
-# Architecture
-
-VPC CIDR: 10.0.0.0/16
-
-Public Subnets
-Private Subnets
-Database Subnets
-
-EC2 runs in Private Subnet.
-RDS runs in Database Subnet.
-
----
-
-# Resources Created
+# 1. Networking Layer
 
 ## VPC
 
 * CIDR: 10.0.0.0/16
-* DNS enabled
+* DNS support enabled
+* DNS hostnames enabled
 
 ## Subnets
 
-Public:
-```
-10.0.0.0/24
-10.0.1.0/24
-10.0.2.0/24
-```
-Private:
-```
-10.0.10.0/24
-10.0.11.0/24
-10.0.12.0/24
-```
+Three-tier subnet architecture across 3 Availability Zones.
 
-Database:
-```
-10.0.20.0/24
-10.0.21.0/24
-10.0.22.0/24
-```
+Public Subnets
+
+* 10.0.0.0/24
+* 10.0.1.0/24
+* 10.0.2.0/24
+
+Private Application Subnets
+
+* 10.0.10.0/24
+* 10.0.11.0/24
+* 10.0.12.0/24
+
+Database Subnets
+
+* 10.0.20.0/24
+* 10.0.21.0/24
+* 10.0.22.0/24
+
+## Internet Gateway
+
+Attached to VPC for public subnet internet access.
+
+## NAT Gateway
+
+Single NAT Gateway deployed in public subnet to allow private subnet outbound internet access.
+
+## Route Tables
+
+Public Route Table
+
+* 0.0.0.0/0 -> Internet Gateway
+
+Private Route Table
+
+* 0.0.0.0/0 -> NAT Gateway
+
+Database Route Table
+
+* Isolated network tier
+
+---
+
+# 2. Security Layer
+
+Four security groups were created.
+
+## ALB Security Group
+
+Ingress
+
+* 80 from 0.0.0.0/0
+* 443 from 0.0.0.0/0
+
+## Service-A Security Group
+
+Ingress
+
+* 8080 from ALB SG
+
+Egress
+
+* 5432 to RDS SG
+* 443 to Internet
+
+## RDS Security Group
+
+Ingress
+
+* 5432 from Service-A SG
+
+## Monitoring Security Group
+
+Ingress
+
+* 9187 from VPC CIDR
+
+This demonstrates **security-group to security-group communication**, which is the recommended production pattern.
+
+---
+
+# 3. Compute Layer
 
 ## EC2 Instance
-```
+
+Service: service-a
 Instance Type: t3.micro
-Private IP: 10.0.10.203
-```
-## RDS
-```
-Engine: PostgreSQL
+AMI: Amazon Linux
+Subnet: Private subnet
+
+Security Group
+
+* service-a
+
+IAM Role
+
+* EC2 instance role attached
+* Policy: AmazonSSMManagedInstanceCore
+
+Purpose
+
+* Enables secure SSM access without SSH.
+
+---
+
+# 4. Database Layer
+
+## RDS PostgreSQL
+
+Engine: PostgreSQL 15
+Instance Class: db.t4g.micro
+Storage: 20 GB
 Port: 5432
-Endpoint:
-myorg-postgres-db-1-dev.cixik60wq589.us-east-1.rds.amazonaws.com
-```
----
 
-# Prerequisites
+Security Groups
 
-## Windows
+* rds
+* monitoring
 
-Install the following:
+Network
 
-AWS CLI
-Session Manager Plugin
-PostgreSQL Client
+* Database subnets
+* Not publicly accessible
 
-```
-choco install awscli
-```
+Secrets
 
-```
-choco install session-manager-plugin
-```
-
-```
-choco install postgresql
-```
-
-## Linux
-
-```
-sudo dnf update
-```
-
-```
-sudo dnf install awscli
-```
-
-```
-sudo dnf install postgresql-client
-```
+* Master password automatically stored in AWS Secrets Manager.
 
 ---
 
-# Configure AWS CLI
+# 5. Connectivity (Secure Access)
 
-```
-aws configure
-```
+## Step 1 — Connect to EC2 using SSM
 
-Provide:
+aws ssm start-session --target <instance-id>
 
-* Access Key
-* Secret Key
-* Region
+This avoids SSH and public IP exposure.
 
----
+## Step 2 — Port Forwarding to RDS
 
-# Connect to EC2 using AWS SSM
-
-EC2 instance is created **without a public IP** because it is deployed inside a **private subnet**.
-
-Instead of SSH, we use **AWS Systems Manager (SSM) Session Manager**.
-
-Benefits:
-
-* No need to open port **22 (SSH)**
-* No bastion host required
-* Works even if instance is in **private subnet**
-* Access controlled using **IAM**
-
-Flow:
-```
-Laptop
-   │
 aws ssm start-session
-   │
-AWS SSM Service
-   │
-SSM Agent inside EC2
-   │
-Shell session created
-```
+--target <instance-id>
+--document-name AWS-StartPortForwardingSessionToRemoteHost
+--parameters '{"host":["<rds-endpoint>"],"portNumber":["5432"],"localPortNumber":["5432"]}'
 
-Command to start session:
+## Step 3 — Connect locally using psql
 
-```
-aws ssm start-session --target INSTANCE_ID
-```
-
-Example from this environment:
-
-```
-aws ssm start-session --target i-05897aae9259d1288
-```
-
-Example output:
-
-```
-Starting session with SessionId: new-user-1-bvg2e6xpetgzgp3kiph5kfxftu
-```
-
-Inside the instance:
-
-```
-whoami
-```
-
-Output:
-
-```
-ssm-user
-```
-
-To switch to root:
-
-```
-sudo su -
-```
-
-Example session:
-
-```
-sh-5.2$ whoami
-ssm-user
-
-sh-5.2$ sudo su -
-[root@ip-10-0-10-203 ~]#
-```
-
-Important points:
-
-* **ssm-user** is created automatically by SSM
-* sudo access is available
-* No SSH key required
-
----
-
-# Connecting to RDS PostgreSQL
-
-Your RDS instance is **not publicly accessible**.
-
-```
-publicly_accessible = false
-```
-
-This means:
-
-* Database is reachable only **inside VPC**
-* Direct connection from laptop will fail
-
-Solution:
-
-Use **SSM Port Forwarding via EC2**.
-
-EC2 acts as a **secure tunnel** to the database.
-
----
-
-# Step 1 — Start Port Forwarding Session
-
-Run this in **Terminal 1**:
-
-```
-$ aws ssm start-session \
---target i-05897aae9259d1288 \
---document-name AWS-StartPortForwardingSessionToRemoteHost \
---parameters '{"host":["myorg-postgres-db-1-dev.cixik60wq589.us-east-1.rds.amazonaws.com"],"portNumber":["5432"],"localPortNumber":["5432"]}'
-```
-
-Explanation:
-
-```
---target
-EC2 instance used as tunnel
-```
-
-```
-host
-Actual RDS endpoint
-```
-
-```
-portNumber
-Remote RDS port
-```
-
-```
-localPortNumber
-Local machine port used for connection
-```
-
-Example output:
-
-```
-Starting session with SessionId: new-user-1-fd2yr47qjvssuknbs9u2idohli
-Port 5432 opened for sessionId new-user-1-fd2yr47qjvssuknbs9u2idohli.
-Waiting for connections...
-
-Connection accepted for session [new-user-1-fd2yr47qjvssuknbs9u2idohli]
-```
-
-This means:
-
-Your **local port 5432 → EC2 → RDS** tunnel is active.
-
-Keep this terminal running.
-
----
-
-# Step 2 — Connect from Local Machine
-
-Open **Terminal 2** and run:
-
-```
 psql -h localhost -p 5432 -U postgres -d postgres
+
+This securely tunnels database traffic through the EC2 instance.
+
+---
+
+# 6. Verified Results
+
+Successfully connected to PostgreSQL.
+
+Databases present:
+
+* appdb1
+* postgres
+* template0
+* template1
+* rdsadmin
+
+SSL connection established.
+
+---
+
+# 7. Key Production Best Practices Demonstrated
+
+* Multi-AZ VPC design
+* Three tier subnet architecture
+* NAT gateway for private workloads
+* No public access to EC2
+* No public access to RDS
+* IAM role based access
+* SSM instead of SSH
+* Secrets Manager for database credentials
+* Security group based service communication
+* Infrastructure as Code with Terraform modules
+
+---
+
+# 8. Terraform Modules Used
+
+Modules implemented:
+
+* vpc
+* security-groups
+* ec2
+* rds
+* ec2-iam-role
+
+Infrastructure created:
+
+* VPC
+* Subnets
+* NAT Gateway
+* Internet Gateway
+* Route Tables
+* Security Groups
+* EC2 instance
+* IAM Role + Instance Profile
+* PostgreSQL RDS
+
+Total resources created: 46
+
+---
+
+# Final Architecture
+
+Internet
+|
+v
+ALB (public subnet)
+|
+v
+Service-A EC2 (private subnet)
+|
+v
+PostgreSQL RDS (database subnet)
+
+Access Method
+
+Developer → AWS SSM → EC2 → RDS
+
+No direct database exposure to internet.
+
+---
+
+This architecture follows a simplified production-ready AWS infrastructure pattern suitable for real DevOps environments.
+
+
+---
+---
+---
+
+# Real Company Procedure: Database Password Handling with AWS Secrets Manager
+
+This document explains how real production systems securely retrieve database credentials without storing passwords in code, Terraform, or environment files.
+
+---
+
+# 1. Goal
+
+Production systems must avoid hardcoded credentials.
+
+Instead of:
+
+```
+DB_PASSWORD=mySuperSecret
 ```
 
-Explanation:
+Companies use **Secrets Manager + IAM roles**.
+
+Architecture:
 
 ```
--h localhost
-Connect to local machine
+Application
+      │
+      ▼
+AWS Secrets Manager
+      │
+      ▼
+RDS Database
 ```
 
-```
--p 5432
-Forwarded port
-```
+The password is fetched dynamically.
+
+---
+
+# 2. Secret Creation (Automatically by RDS)
+
+When RDS is created with managed password:
 
 ```
--U postgres
-Database user
+manage_master_user_password = true
 ```
 
-```
--d postgres
-Default database
-```
+AWS automatically:
 
-Example output:
+* Generates a random password
+* Stores it in Secrets Manager
+* Enables password rotation
 
-```
-psql (16.2, server 15.14)
-
-SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384)
-```
-
-List databases:
+Example secret JSON:
 
 ```
-\l
-```
-
-Example result:
-
-```
-List of databases
-
-appdb1
-postgres
-rdsadmin
-template0
-template1
-```
-
-Meaning:
-
-```
-appdb1
-Application database created by Terraform
-```
-
-```
-postgres
-Default PostgreSQL database
-```
-
-```
-rdsadmin
-Internal AWS management database
+{
+  "username": "postgres",
+  "password": "random-generated-password",
+  "engine": "postgres",
+  "host": "myorg-postgres-db-1-dev.xxxxx.us-east-1.rds.amazonaws.com",
+  "port": 5432
+}
 ```
 
 ---
 
-# Network Flow Explained
+# 3. Grant Application Access (IAM Role)
 
-Actual connection path:
+Applications must be allowed to read the secret.
 
-```
-Laptop
-  ↓
-SSM Tunnel
-  ↓
-EC2 (Private Subnet)
-  ↓
-RDS PostgreSQL (Database Subnet)
-```
-
-Key point:
+Example IAM policy:
 
 ```
-RDS never becomes publicly accessible
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "<secret-arn>"
+    }
+  ]
+}
 ```
 
-Security remains intact.
+Attach this policy to:
+
+* EC2 instance role
+* EKS service account
+* ECS task role
 
 ---
 
-## List RDS
+# 4. Application Startup Procedure
+
+The application should fetch the secret **during startup**.
+
+Example startup flow:
 
 ```
-aws rds describe-db-instances
-```
-
-## List EC2
-
-```
-aws ec2 describe-instances
-```
-
-## Test DB port
-
-```
-nc -zv host 5432
+Application starts
+        │
+        ▼
+Fetch secret from Secrets Manager
+        │
+        ▼
+Parse username / password
+        │
+        ▼
+Connect to database
 ```
 
 ---
 
-# Important Points
+# 5. Example: Bash Startup Script
 
-* EC2 has no public IP
-* SSM is used for access
-* RDS is private
-* NAT Gateway provides internet access
+Used in many EC2 deployments.
+
+```
+SECRET=$(aws secretsmanager get-secret-value \
+  --secret-id my-db-secret \
+  --query SecretString \
+  --output text)
+
+DB_USER=$(echo $SECRET | jq -r .username)
+DB_PASS=$(echo $SECRET | jq -r .password)
+DB_HOST=$(echo $SECRET | jq -r .host)
+```
+
+Database connection:
+
+```
+psql -h $DB_HOST -U $DB_USER -d appdb
+```
 
 ---
 
-# Clean Up
+# 6. Example: Python Application
+
+Many backend services fetch secrets directly.
 
 ```
-terraform destroy -var-file=environments/dev.tfvars
+import boto3
+import json
+
+client = boto3.client("secretsmanager")
+
+response = client.get_secret_value(
+    SecretId="my-db-secret"
+)
+
+secret = json.loads(response["SecretString"])
+
+username = secret["username"]
+password = secret["password"]
+host = secret["host"]
 ```
+
+The application then uses these credentials to connect to PostgreSQL.
+
+---
+
+# 7. What Happens When Password Rotates
+
+Secrets Manager rotates the password automatically.
+
+```
+Secrets Manager
+        │
+        ▼
+Updates RDS password
+        │
+        ▼
+Updates stored secret
+```
+
+Applications simply fetch the latest secret.
+
+No manual change required.
+
+---
+
+# 8. Environment Variables in Production
+
+Production applications **do not store passwords**.
+
+Instead they store only the secret name.
+
+Example:
+
+```
+DB_SECRET_NAME=my-db-secret
+AWS_REGION=us-east-1
+```
+
+The application retrieves credentials at runtime.
+
+---
+
+# 9. Kubernetes Production Pattern
+
+In Kubernetes environments:
+
+```
+Pod
+ │
+ ▼
+IAM Role (IRSA)
+ │
+ ▼
+Secrets Manager
+ │
+ ▼
+RDS
+```
+
+The pod dynamically retrieves credentials using AWS SDK.
+
+---
+
+# 10. Security Advantages
+
+Using Secrets Manager provides:
+
+* No passwords stored in Git repositories
+* Automatic credential rotation
+* Centralized secret management
+* IAM based access control
+
+---
+
+# 11. Summary (Production Workflow)
+
+```
+Terraform
+   │
+   ▼
+Creates RDS with managed password
+   │
+   ▼
+Secrets Manager stores credentials
+   │
+   ▼
+Application IAM role gets permission
+   │
+   ▼
+Application fetches secret at startup
+   │
+   ▼
+Application connects to RDS
+```
+
+This is the standard pattern used in modern cloud production systems.
+
